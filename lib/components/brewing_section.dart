@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:trouble_brewing/constants.dart';
+import 'package:trouble_brewing/providers/game_state_provider.dart';
 
 class BrewingSection extends StatefulWidget {
   const BrewingSection({super.key});
@@ -11,9 +13,6 @@ class BrewingSection extends StatefulWidget {
 }
 
 class _BrewingSectionState extends State<BrewingSection> {
-  int activeIndex = 0;
-  List<List<Additive>> additiveContents = List.filled(6, [Additive.BISCUIT]);
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -22,67 +21,61 @@ class _BrewingSectionState extends State<BrewingSection> {
       height: 500,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          BrewBox(activeIndex: activeIndex, additiveContents: additiveContents),
-          Additives(
-            onItemPressed: (Additive additiveKey) {
-              setState(() {
-                additiveContents[activeIndex] = [
-                  ...additiveContents[activeIndex],
-                  additiveKey
-                ];
-              });
-            },
-          )
-        ],
+        children: [BrewBox(), Additives()],
       ),
     );
   }
 }
 
 class Additives extends StatelessWidget {
-  final void Function(Additive additiveKey) onItemPressed;
-  const Additives({super.key, required this.onItemPressed});
+  const Additives({super.key});
 
   @override
   Widget build(BuildContext context) {
+    GameStateProvider gameStateProvider =
+        Provider.of<GameStateProvider>(context, listen: false);
+
     return Container(
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           AdditiveButton(
               onPressed: () {
-                onItemPressed(Additive.BISCUIT);
+                gameStateProvider.setAdditiveContent(Additive.BISCUIT);
               },
-              icon: Icon(
+              icon: const Icon(
                 Icons.airlines_rounded,
                 color: Colors.white,
                 size: 40,
               )),
           AdditiveButton(
-              onPressed: () => onItemPressed(Additive.CREAM),
-              icon: Icon(
+              onPressed: () =>
+                  gameStateProvider.setAdditiveContent(Additive.CREAM),
+              icon: const Icon(
                 Icons.icecream,
                 color: Colors.white,
                 size: 40,
               )),
           AdditiveButton(
-              onPressed: () => onItemPressed(Additive.BAR),
-              icon: Icon(
+              onPressed: () =>
+                  gameStateProvider.setAdditiveContent(Additive.BAR),
+              icon: const Icon(
                 Icons.edit,
                 color: Colors.white,
                 size: 40,
               )),
           AdditiveButton(
-              onPressed: () => onItemPressed(Additive.SUGAR),
-              icon: Icon(
+              onPressed: () =>
+                  gameStateProvider.setAdditiveContent(Additive.SUGAR),
+              icon: const Icon(
                 Icons.check_box_outline_blank_sharp,
                 color: Colors.white,
                 size: 40,
               )),
           AdditiveButton(
-              onPressed: () => onItemPressed(Additive.COOKIE),
-              icon: Icon(
+              onPressed: () =>
+                  gameStateProvider.setAdditiveContent(Additive.COOKIE),
+              icon: const Icon(
                 Icons.cookie,
                 color: Colors.white,
                 size: 40,
@@ -118,112 +111,138 @@ class AdditiveButton extends StatelessWidget {
 }
 
 class BrewBox extends StatelessWidget {
-  final int activeIndex;
-  final List<List<Additive>> additiveContents;
-  const BrewBox(
-      {super.key, required this.activeIndex, required this.additiveContents});
+  const BrewBox({super.key});
 
   @override
   Widget build(BuildContext context) {
-    print(additiveContents);
-    return Container(
-      height: 400,
-      child: Column(
-        children: [
-          Expanded(
-            child: GridView.count(
-                // scrollDirection: Axis.vertical,
-                primary: false,
-                crossAxisCount: 3,
-                crossAxisSpacing: 10,
-                childAspectRatio: 50 / 100,
-                children: List.generate(
-                    6,
-                    (index) => BrewItem(
-                          isActive: activeIndex == index,
-                          contents: additiveContents[index],
-                        ))),
-          )
-        ],
-      ),
-    );
+    return Consumer<GameStateProvider>(
+        builder: (context, gameStateProvider, _) {
+      return Container(
+        height: 400,
+        child: Column(
+          children: [
+            Expanded(
+              child: GridView.count(
+                  // scrollDirection: Axis.vertical,
+                  primary: false,
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 50 / 100,
+                  children: List.generate(
+                      6,
+                      (index) => BrewItem(
+                            clearContents: () {
+                              gameStateProvider.clearAdditiveContent(index);
+                            },
+                            onPressed: () {
+                              gameStateProvider.setActiveIndex(index);
+                            },
+                            isActive: gameStateProvider.activeIndex == index,
+                            contents: gameStateProvider.additiveContents[index],
+                          ))),
+            )
+          ],
+        ),
+      );
+    });
   }
 }
 
 class BrewItem extends StatefulWidget {
   final bool isActive;
   final List<Additive> contents;
-  const BrewItem({super.key, required this.isActive, required this.contents});
+  final Function onPressed;
+  final Function clearContents;
+  const BrewItem(
+      {super.key,
+      required this.isActive,
+      required this.contents,
+      required this.onPressed,
+      required this.clearContents});
 
   @override
   State<BrewItem> createState() => _BrewItemState();
 }
 
 class _BrewItemState extends State<BrewItem> {
-  bool beginFilling = false;
+  bool isFilling = false;
   bool forceStop = false;
   bool goneBad = false;
+  Timer? goneBadConversionTimer;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 150,
-      width: 50,
-      child: Column(
-        children: [
-          AdditiveButton(
-              onPressed: () {
-                setState(() {
-                  beginFilling = !beginFilling;
-                });
-                if (!beginFilling) {
-                  Timer(Duration(milliseconds: 2500), () {
-                    setState(() {
-                      goneBad = true;
+    return GestureDetector(
+      onTap: () {
+        widget.onPressed();
+      },
+      child: Container(
+        height: 150,
+        width: 50,
+        child: Column(
+          children: [
+            AdditiveButton(
+                onPressed: () {
+                  if (!isFilling) {
+                    goneBadConversionTimer =
+                        Timer(Duration(milliseconds: 2500), () {
+                      setState(() {
+                        goneBad = true;
+                      });
                     });
+                  }
+                  if (isFilling) {
+                    goneBadConversionTimer?.cancel();
+                    setState(() {
+                      goneBad = false;
+                    });
+                    widget.clearContents();
+                  }
+                  setState(() {
+                    isFilling = !isFilling;
                   });
-                }
-              },
-              icon: Icon(
-                !beginFilling ? Icons.water_drop_outlined : Icons.dangerous,
-                color: Colors.white,
-              )),
-          Container(
-            margin: EdgeInsets.only(top: 10),
-            width: 50,
-            height: 100,
-            decoration: BoxDecoration(
-                border: Border.all(),
-                color: widget.isActive ? Colors.grey[200] : Colors.white),
-            child: Stack(
-              children: [
-                Positioned(
-                    bottom: 0,
-                    child: AnimatedContainer(
-                      duration: beginFilling
-                          ? Duration(seconds: 2)
-                          : const Duration(seconds: 0),
-                      width: 50,
-                      height: beginFilling ? 100 : 0,
-                      color: Colors.blue,
-                    )),
-                Container(
-                  width: 50,
-                  height: 100,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    verticalDirection: VerticalDirection.down,
-                    children: [
-                      for (var i = 0; i < widget.contents.length; i++)
-                        Icon(
-                            AdditiveConstants.addtiveIcons[widget.contents[i]]),
-                    ],
-                  ),
-                )
-              ],
-            ),
-          )
-        ],
+                },
+                icon: Icon(
+                  !isFilling ? Icons.water_drop_outlined : Icons.dangerous,
+                  color: Colors.white,
+                )),
+            Container(
+              margin: EdgeInsets.only(top: 10),
+              width: 50,
+              height: 100,
+              decoration: BoxDecoration(
+                  border: Border.all(),
+                  color: widget.isActive ? Colors.grey[200] : Colors.white),
+              child: Stack(
+                children: [
+                  Positioned(
+                      bottom: 0,
+                      child: AnimatedContainer(
+                        duration: isFilling
+                            ? Duration(seconds: 2)
+                            : const Duration(seconds: 0),
+                        width: 50,
+                        height: isFilling ? 100 : 0,
+                        color: goneBad ? Colors.brown : Colors.blue,
+                      )),
+                  Container(
+                    width: 50,
+                    height: 100,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      verticalDirection: VerticalDirection.down,
+                      children: [
+                        for (var i = 0; i < widget.contents.length; i++)
+                          Icon(AdditiveConstants
+                              .addtiveIcons[widget.contents[i]]),
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            )
+          ],
+        ),
       ),
     );
   }
