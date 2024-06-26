@@ -36,9 +36,15 @@ class _MainGameState extends State<MainGame> {
             scrollDirection: Axis.horizontal,
             //   controller: _pageController,
             children: [
-              KeepAlivePage(child: BrewingSection()),
+              KeepAlivePage(
+                  child: BrewingSection(
+                sectionIndex: 0,
+              )),
               OrdersSection(),
-              KeepAlivePage(child: BrewingSection())
+              KeepAlivePage(
+                  child: BrewingSection(
+                sectionIndex: 1,
+              ))
             ],
           ),
         ),

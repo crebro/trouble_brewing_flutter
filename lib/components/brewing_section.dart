@@ -5,14 +5,10 @@ import 'package:provider/provider.dart';
 import 'package:trouble_brewing/constants.dart';
 import 'package:trouble_brewing/providers/game_state_provider.dart';
 
-class BrewingSection extends StatefulWidget {
-  const BrewingSection({super.key});
+class BrewingSection extends StatelessWidget {
+  final int sectionIndex;
+  const BrewingSection({super.key, required this.sectionIndex});
 
-  @override
-  State<BrewingSection> createState() => _BrewingSectionState();
-}
-
-class _BrewingSectionState extends State<BrewingSection> {
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -21,14 +17,20 @@ class _BrewingSectionState extends State<BrewingSection> {
       height: 500,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [BrewBox(), Additives()],
+        children: [
+          BrewBox(sectionIndex: sectionIndex),
+          Additives(
+            sectionIndex: sectionIndex,
+          )
+        ],
       ),
     );
   }
 }
 
 class Additives extends StatelessWidget {
-  const Additives({super.key});
+  final int sectionIndex;
+  const Additives({super.key, required this.sectionIndex});
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +43,8 @@ class Additives extends StatelessWidget {
         children: [
           AdditiveButton(
               onPressed: () {
-                gameStateProvider.setAdditiveContent(Additive.BISCUIT);
+                gameStateProvider.setAdditiveContent(Additive.BISCUIT,
+                    sectionIndex: sectionIndex);
               },
               icon: const Icon(
                 Icons.airlines_rounded,
@@ -49,32 +52,35 @@ class Additives extends StatelessWidget {
                 size: 40,
               )),
           AdditiveButton(
-              onPressed: () =>
-                  gameStateProvider.setAdditiveContent(Additive.CREAM),
+              onPressed: () => gameStateProvider.setAdditiveContent(
+                  Additive.CREAM,
+                  sectionIndex: sectionIndex),
               icon: const Icon(
                 Icons.icecream,
                 color: Colors.white,
                 size: 40,
               )),
           AdditiveButton(
-              onPressed: () =>
-                  gameStateProvider.setAdditiveContent(Additive.BAR),
+              onPressed: () => gameStateProvider
+                  .setAdditiveContent(Additive.BAR, sectionIndex: sectionIndex),
               icon: const Icon(
                 Icons.edit,
                 color: Colors.white,
                 size: 40,
               )),
           AdditiveButton(
-              onPressed: () =>
-                  gameStateProvider.setAdditiveContent(Additive.SUGAR),
+              onPressed: () => gameStateProvider.setAdditiveContent(
+                  Additive.SUGAR,
+                  sectionIndex: sectionIndex),
               icon: const Icon(
                 Icons.check_box_outline_blank_sharp,
                 color: Colors.white,
                 size: 40,
               )),
           AdditiveButton(
-              onPressed: () =>
-                  gameStateProvider.setAdditiveContent(Additive.COOKIE),
+              onPressed: () => gameStateProvider.setAdditiveContent(
+                  Additive.COOKIE,
+                  sectionIndex: sectionIndex),
               icon: const Icon(
                 Icons.cookie,
                 color: Colors.white,
@@ -111,12 +117,15 @@ class AdditiveButton extends StatelessWidget {
 }
 
 class BrewBox extends StatelessWidget {
-  const BrewBox({super.key});
+  final int sectionIndex;
+  const BrewBox({super.key, required this.sectionIndex});
 
   @override
   Widget build(BuildContext context) {
     return Consumer<GameStateProvider>(
         builder: (context, gameStateProvider, _) {
+      List<List<Additive>> additiveContents =
+          gameStateProvider.getAdditiveContents(sectionIndex);
       return Container(
         height: 400,
         child: Column(
@@ -132,13 +141,15 @@ class BrewBox extends StatelessWidget {
                       6,
                       (index) => BrewItem(
                             clearContents: () {
-                              gameStateProvider.clearAdditiveContent(index);
+                              gameStateProvider.clearAdditiveContent(index,
+                                  sectionIndex: sectionIndex);
                             },
                             onPressed: () {
-                              gameStateProvider.setActiveIndex(index);
+                              gameStateProvider.setActiveIndex(index,
+                                  sectionIndex: sectionIndex);
                             },
                             isActive: gameStateProvider.activeIndex == index,
-                            contents: gameStateProvider.additiveContents[index],
+                            contents: additiveContents[index],
                           ))),
             )
           ],
